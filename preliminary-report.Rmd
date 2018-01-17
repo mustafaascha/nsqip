@@ -1,0 +1,167 @@
+---
+title: "Preliminary Report - PRS July Effect"
+author: "Mustafa Ascha"
+date: "January 8, 2018"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+source("munge.R")
+library(pander)
+```
+
+# Missingness over recent years    
+
+Here is a table of the missing values over time. 
+
+```{r}
+nsqip <- make_nsqip(6:9) 
+
+nsqip %>% 
+  group_by(pgy_bin, admyr, admqtr) %>% 
+  summarise(count = n()) %>% 
+  arrange(admyr, admqtr) %>% 
+  data.frame %>% 
+  pander
+
+```
+
+# Missing values over all years   
+
+```{r}
+
+for_io <- list()
+#remove year 2015 because it looks like there's no pgy
+for_io[["to_read"]] <- list.files("data/txt", pattern = "txt.gz", full.names = TRUE)
+for_io[["to_read"]] <- for_io[["to_read"]]
+for_io[["yrs"]] <- grep_raw(for_io[["to_read"]], "[0-9]+")
+for_io[["new_names"]] <- paste0("ACS_", for_io[["yrs"]])
+the_data <- map(for_io$to_read, read_nsqip)
+the_data <- map(the_data, names_to_lower)
+names(the_data) <- for_io$new_names
+
+make_missingprops <- function(x){
+  map_chr(x, function(y) sprintf("%.3f", length(which(is.na(y))) / 
+                                   length(y)))
+}
+the_props <- list()
+the_props[["missingprops"]] <- map(the_data, make_missingprops)
+
+the_props[["mp_dfs"]] <- 
+  map2(the_props$missingprops, map(the_data, names), 
+       function(x, y){
+          data.frame(prop_missing = x,
+                     the_var = y, 
+                     stringsAsFactors = FALSE)
+  })
+
+the_props[["mp_df"]] <- 
+  map2_df(the_props$mp_dfs, names(the_data), 
+       function(x, y) data.frame(cbind(x, file_year = y), 
+                                 stringsAsFactors = FALSE)) %>% 
+  spread(file_year, prop_missing)
+
+pander(the_props$mp_df, split.table = Inf)
+
+```
+
+
+\pagebreak
+
+```{r, eval = FALSE}
+
+vars_to_check <- 
+  c(paper_stuff$mona$patient_predictors, 
+    paper_stuff$mona$outcomes, 
+    paper_stuff$mona$exclusion)
+
+missings <- list(counts01 = Hmisc::na.pattern(nsqip[,vars_to_check]))
+
+missings[["dfs"]] <- 
+  map2(missings$counts01, names(missings$counts01), 
+      ~ data.frame(missing = unlist(strsplit(.y, split = "")),
+                   var = vars_to_check, count = .x,
+                   stringsAsFactors = FALSE))
+
+new_var_df <- function(x, y) {
+    data.frame(suppressWarnings(cbind(x, y)),
+               stringsAsFactors = FALSE)  }
+
+missings[["dfs"]] <- map(missings$dfs, ~ new_var_df(.x, vars_to_check))
+named_map <- function(x, .f, ...) map2(.x = x, .y = names(x), .f = .f, ...)
+missings[["df"]] <- named_map(missings$dfs, new_var_df)
+
+missings[["props"]] <- 
+  map_chr(nsqip, ~ sprintf("%.3f", length(which(is.na(.x))) / length(.x)))
+
+nested_nsqip <- nsqip %>% group_by(admyr) %>% nest 
+
+nested_nsqip$new_data <- 
+  map(nested_nsqip$data, function(x) {
+    map_chr(x, function(y){
+        sprintf("%.3f", length(which(is.na(y))) / length(y)) 
+      })
+  })
+
+nested_nsqip$new_data <- 
+  map2(nested_nsqip$new_data, map(nested_nsqip$new_data, names), 
+       function(x, y){
+          data.frame(prop_missing = x,
+                     the_var = y, 
+                     stringsAsFactors = FALSE)
+  })
+
+nested_nsqip$data <- nested_nsqip$new_data
+nested_nsqip$new_data <- NULL
+
+missings[["props_missings"]] <- 
+  unnest(nested_nsqip) %>% filter(prop_missing != "0.000")
+
+pander(missings$props, caption = "This table shows proportions of a variable that are missing.")
+
+```
+
+```{r, eval = FALSE}
+props_tabling <- function(x, y) {
+  the_data <- data.frame(table(is.na(x), nsqip$pgy_bin), 
+                         stringsAsFactors = FALSE)
+  the_data[["Variable"]] <- y
+  names(the_data) <- c("Missing_TF", "PGY", "Count", "Variable")
+  the_data[] <- lapply(the_data, as.character)
+  the_data[["Missing"]] <- 
+    ifelse(the_data$Missing_TF == "TRUE", "Missing", "Not Missing")
+  the_data[["Proportion"]] <- the_data[["Count"]] / sum(the_data[["Count"]])
+  the_data <- the_data[,c("Variable", "Missing", "PGY", "Count")]
+  the_data
+}
+
+missings[["props_tables"]] <- map2_df(nsqip, names(nsqip), props_tabling)
+
+pander(missings$props_tables)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
