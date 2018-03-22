@@ -1,102 +1,11 @@
 
 
 
-
-#' Title
-#'
-#' @param which_df 
-#'
-#' @return
-#' @export
-#'
-#' @examples
-make_je_nsqip <- function(which_df) {
-  make_nsqip(1:6, which_df)
-}
-
-#' Title
-#'
-#' @param which_df 
-#'
-#' @return
-#' @export
-#'
-#' @examples
-make_july_effect_nsqip <- function(which_df) {
-  warning("This function was not used for the manuscript, 
-          and is retained solely for exposition.")
-  make_nsqip(1:6, which_df)
-}
-
-
-#' @param df 
-#'
-#'@import tidyverse
-model_vars <- function(df){
-  list(select(df, "pgy01", "pgy_bin", "admqtr", "admqtr23_01",
-              one_of(nsqipr::paper_stuff$mona$predictors, 
-                     unique(unlist(otl)))), 
-       select(df,  "propensity_score"))
-}
-
-
+#' Run GLMS for each of matched and unmatched cohorts
 #'
 #'
-#'
-#'
-#' @param df 
-#'
-#'@import MatchIt
-#'@export
-match_fn <- function(df) {
-  MatchIt::match.data(MatchIt::matchit(pgy01 ~ 
-                       age + sex + bmi + race + smoke + 
-                       diabetes + hypermed + workrvu + 
-                       optime + inout + tothlos + wndclas + 
-                       asaclas + attend, 
-                     method = "nearest", data = df))
-}
-
-
-#' Title
-#'
-#' @param df 
-#' @param the_outcome 
-#'
-#' @return
-#' @export
-#'
-#' @examples
-do_prop_glm <- function(df, the_outcome){
-  the_form <- 
-    paste0(the_outcome, " ~ ", 
-           #paste0(c("pgy_bin", paper_stuff$mona$predictors, "propensity_score"), 
-           paste0(c("admqtr + pgy_bin", "propensity_score"),
-                  collapse = " + "))
-  glm(the_form, "binomial", df)
-}
-
-
-#' Title
-#'
-#' @param df 
-#' @param the_outcome 
-#'
-#' @return
-#' @export
-#'
-#' @examples
-do_non_prop_glm <- function(df, the_outcome){
-  the_form <- 
-    paste0(the_outcome, " ~ ", "admqtr + pgy_bin", collapse = " + ")
-  glm(the_form, "binomial", df)
-}
-
-#'
-#'
-#'
-#' @param m_dfs 
-#' @param dfs 
+#' @param m_dfs Matched data.frames
+#' @param dfs Unmatched data.frames
 #'
 #'@import purrr
 #'@export
@@ -108,6 +17,22 @@ do_glms <- function(m_dfs, dfs){
     otl[["cosmetics"]] <- paste0(c("returnor", "supinfec"), "_01")
     otl[["no_cosmetic"]] <- paste0(c("returnor", "supinfec"), "_01")
   }
+  
+  do_non_prop_glm <- function(df, the_outcome){
+    the_form <- 
+      paste0(the_outcome, " ~ ", "admqtr + pgy_bin", collapse = " + ")
+    glm(the_form, "binomial", df)
+  }
+  
+  do_prop_glm <- function(df, the_outcome){
+    the_form <- 
+      paste0(the_outcome, " ~ ", 
+             #paste0(c("pgy_bin", paper_stuff$mona$predictors, "propensity_score"), 
+             paste0(c("admqtr + pgy_bin", "propensity_score"),
+                    collapse = " + "))
+    glm(the_form, "binomial", df)
+  }
+  
   glms <- list()
   df_names <- names(dfs)
   for(i in seq_along(dfs)){
@@ -120,30 +45,15 @@ do_glms <- function(m_dfs, dfs){
 }
 
 
-#' @param matrices_list 
-#'
-#'@import tidyverse
-#'@export
-flatten_matrices_df <- function(matrices_list){
-  matrices_list <- flatten(matrices_list)
-  the_rownames <- unlist(map(matrices_list, rownames))
-  the_df <- bind_rows(map(matrices_list, data.frame, stringsAsFactors = FALSE))
-  the_df[["rownames"]] <- the_rownames
-  names(the_df) <- c("conf.lower", "conf.upper", "glm", "outcome", "term")
-  the_df
-}
 
-
-
-#' Title
+#' Get c-statistic and Hosmer-Lemeshow statistics for GLMs
 #'
-#' @param dflist 
-#' @param dfnm 
+#' @param dflist A list of data.frames
+#' @param dfnm The name of each data.frame
 #'
-#' @return
+#' @return A data.frame with one row
 #' @export
 #'
-#' @examples
 classification_metrics <- function(dflist, dfnm) {
   library(pROC)
   library(ResourceSelection)

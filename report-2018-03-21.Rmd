@@ -24,7 +24,9 @@ otl[["no_cosmetic"]] <- paste0(c("returnor", "supinfec"), "_01")
 
 
 ```{r read data}
-nsqip <- map(c("everyone", "cosmetics", "no cosmetics"), make_je_nsqip) 
+nsqip <- 
+  map(c("everyone", "cosmetics", "no cosmetics"), 
+      function(which_df) make_nsqip(1:6, which_df)) 
 names(nsqip) <- c("everyone", "cosmetics", "no_cosmetic")
 ```
 
@@ -32,13 +34,14 @@ names(nsqip) <- c("everyone", "cosmetics", "no_cosmetic")
 #tbl_ones_pgy <- map(nsqip, tbl_one, strat = "pgy_bin")
 
 nsqip <- map(nsqip, function(df) mutate(df, admqtr_t = ifelse(admqtr == "0", "Any Quarter", admqtr)))
-tbl_ones <- map(nsqip, tbl_one, strat = "admqtr_t")
-
-suppress_infrequent_p <- function(tbl_one){
-  to_suppress <- apply(tbl_one[,1:2], 1, function(x) any(x <= 5))
-  tbl_one[to_suppress,3] <- NA
-  tbl_one
-}
+tbl_ones <- 
+  map(nsqip, 
+      function(df, strat) {
+        print(tableone::CreateTableOne(c("surgspec", "pgy_bin", 
+                                         paper_stuff$mona$predictors, 
+                                         paper_stuff$vti$outcomes), 
+                             strata = "admqtr_t", data = df), printToggle = FALSE)
+  })
 
 ```
 
@@ -59,7 +62,13 @@ nsqip <- nsqip %>% map(binarize_outcomes)
 #check which variables are cool
 #map(nsqip, function(x) map(x[paper_stuff$mona$outcomes], table))
 
-nsqip <- map(nsqip, model_vars)
+nsqip <- 
+  map(nsqip, function(df){
+    list(select(df, "pgy01", "pgy_bin", "admqtr", "admqtr23_01",
+                one_of(nsqipr::paper_stuff$mona$predictors, 
+                       unique(unlist(otl)))), 
+         select(df,  "propensity_score"))
+    })
 pscores <- map(nsqip, 2)
 nsqip <- 
   map(nsqip, 1) %>% 
@@ -71,7 +80,16 @@ impute_fn <- function(df) mice(df, m=1, maxit=50, seed=400, ridge=0.01)
 nsqip <- map(nsqip, function(df) mice::complete(impute_fn(df), 1))
 nsqip <- map2(nsqip, pscores, function(x, y) na.omit(bind_cols(x, y)))
 
-matched_data <- map(nsqip, match_fn)
+matched_data <- 
+  map(nsqip, function(df) {
+  MatchIt::match.data(MatchIt::matchit(pgy01 ~ 
+                       age + sex + bmi + race + smoke + 
+                       diabetes + hypermed + workrvu + 
+                       optime + inout + tothlos + wndclas + 
+                       asaclas + attend, 
+                     method = "nearest", data = df))
+  })
+
 unmatched_data <- nsqip
 
 #match_fn(nsqip[[1]])
@@ -119,7 +137,15 @@ confint_models <-
            cbind(confint(mdl[[1]]), glm = dfnm, outcome = mdl[[2]])
            })
          }) %>% 
-  flatten_matrices_df
+  (function(matrices_list){
+    matrices_list <- flatten(matrices_list)
+    the_rownames <- unlist(map(matrices_list, rownames))
+    the_df <- bind_rows(map(matrices_list, data.frame, stringsAsFactors = FALSE))
+    the_df[["rownames"]] <- the_rownames
+    names(the_df) <- c("conf.lower", "conf.upper", "glm", "outcome", "term")
+    the_df
+  })
+
 
 
 models_df <- full_join(tidied_models, confint_models)
@@ -137,7 +163,6 @@ models_df$outcome <- gsub("_01$", "", models_df$outcome)
 
 models_df <- models_df %>% 
   filter(!(term %in% c("(Intercept)", "propensity_score"))) 
-#                       "admqtr3", "pgy_binThree or lower")))
 
 models_df$propensity <- 
   ifelse(grepl("no_prop", models_df$glm), "Unmatched", "Matched")
@@ -167,7 +192,8 @@ models_df[fxr_uppers,c("estimate", "conf.lower", "conf.upper", "p.value")] <-
 to_show <- 
   c("term", "population", "propensity", "outcome", 
     "estimate", "conf.lower", "conf.upper", "p.value", 
-    "c_stat", "h_l_stat")
+    #"c_stat", 
+    "h_l_stat")
 
 models_df <- left_join(models_df, aucs)
 

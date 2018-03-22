@@ -1,0 +1,14 @@
+Package: nsqipr
+Title: Using ACS-NSQIP in R (unofficially)
+Version: 0.0.0.9000
+Authors@R: c(person("Mona", "Ascha", email = "first.last@example.com", role = c("aut")),
+          person("Mustafa", "Ascha", email = "first.last@example.com", role = c("aut", "cre")))
+Description: What the package does (one paragraph).
+Depends: R (>= 3.4.3)
+License: MIT
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 6.0.1
+Suggests: knitr,
+    rmarkdown
+VignetteBuilder: knitr

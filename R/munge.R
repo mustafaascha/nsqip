@@ -2,15 +2,12 @@
 
 
 
-#'
-#'
-#'
-#'
-#'
+#' Make a NSQIP data.frame
 #'
 #'
 #' @param which_files 
-#' @param study_pop 
+#' @param study_pop Three cohorts were used for this work: everyone, people
+#'   having cosmetics procedures, and people having non-cosmetic procedures
 #'
 #'@import tidyverse
 #'
@@ -45,11 +42,24 @@ make_nsqip <- function(which_files = "default", study_pop = "everyone"){
   } else {
     for_io[["to_read"]] <- for_io[["to_read"]][which_files]#[-length(for_io[["to_read"]])]
   }
+  grep_raw <- function(x, p, v = FALSE) regmatches(x, regexpr(p, x), invert = v)
   for_io[["yrs"]] <- grep_raw(for_io[["to_read"]], "[0-9]+")
   for_io[["new_names"]] <- paste0("ACS_", for_io[["yrs"]])
-  the_data <- map(for_io$to_read, read_nsqip)
-  the_data <- map(the_data, names_to_lower)
+  the_data <- 
+    map(for_io$to_read, 
+        function(filepath) {
+          read_tsv(file = filepath, 
+                   col_types = cols(.default = "c"), guess_max = 0, 
+                   na = c("9999", "999", "-99", "NULL"))
+        })
+  the_data <- 
+    map(the_data, 
+        function(df) {
+          names(df) <- tolower(names(df))
+          df
+        })
   names(the_data) <- for_io$new_names
+  
   merge_race <- function(df){
     if(any(grepl("race_new", names(df)))){
       df[["race"]] <- df[["race_new"]]
@@ -126,17 +136,25 @@ make_nsqip <- function(which_files = "default", study_pop = "everyone"){
 
 
 
+#' Make outcomes binary
+#'
+#' @param df 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+binarize_outcomes <- function(df){
+  binarize <- function(fct){
+    the_levels <- unique(fct[!is.na(fct)])
+    stopifnot(length(the_levels) == 2)
+    as.numeric(fct == the_levels[1])
+  }
+  df[,paste0(paper_stuff$mona$outcomes, "_01")] <- 
+    lapply(df[,paper_stuff$mona$outcomes], binarize)
+  df
+}
 
-# new_levels <- 
-#   c("White", "White, Not of Hispanic Origin", 
-#             "Black or African American",  
-#             "Black, Not of Hispanic Origin", 
-#             "Asian", "Asian or Pacific Islander", 
-#             "Native Hawaiian or Pacific Islander", 
-#             "American Indian or Alaska Native", 
-#             "Hispanic, White", "Hispanic, Black",
-#             "Hispanic, Color Unknown", "Unknown")
-# unique(nsqip$race)[!(unique(nsqip$race) %in% new_levels)]
 
 
 
