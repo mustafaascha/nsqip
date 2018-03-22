@@ -1,23 +1,36 @@
-library(tidyverse)
-library(tableone)
 
-source("functions.R")
-source("paper_things.R")
 
-the_cache <- list()
 
+
+#'
+#'
+#'
+#'
+#'
+#'
+#'
+#' @param which_files 
+#' @param study_pop 
+#'
+#'@import tidyverse
+#'
 make_nsqip <- function(which_files = "default", study_pop = "everyone"){
+  paper_stuff <- nsqipr::paper_stuff
   stopifnot(study_pop %in% c("everyone", "cosmetics", "no cosmetics"))
-  if("nsqip" %in% ls(.GlobalEnv[["the_cache"]])){
-    nsqip <- .GlobalEnv[["the_cache"]][["nsqip"]]
-    if(study_pop == "everyone") {
-      to_return <- nsqip
-    } else if(study_pop == "cosmetics") {
-      to_return <- nsqip %>% filter(cpt %in% paper_stuff$mona$cosmetics)
-    } else if(study_pop == "no cosmetics") {
-      to_return <- nsqip %>% filter(!(cpt %in% paper_stuff$mona$cosmetics))
+  if(exists("the_cache")) {
+    if("nsqip" %in% ls(.GlobalEnv[["the_cache"]])){
+      nsqip <- .GlobalEnv[["the_cache"]][["nsqip"]]
+      if(study_pop == "everyone") {
+        to_return <- nsqip
+      } else if(study_pop == "cosmetics") {
+        to_return <- nsqip %>% filter(cpt %in% paper_stuff$mona$cosmetics)
+      } else if(study_pop == "no cosmetics") {
+        to_return <- nsqip %>% filter(!(cpt %in% paper_stuff$mona$cosmetics))
+      }
+      return(to_return)
     }
-    return(to_return)
+  } else {
+    the_cache <<- list()
   }
   for_io <- list()
   #remove year 2015 because it looks like there's no pgy
@@ -58,17 +71,17 @@ make_nsqip <- function(which_files = "default", study_pop = "everyone"){
   nsqip$pgy_bin <- with(nsqip, 
          ifelse(pgy %in% as.character(0:3), "Three or lower", 
                 ifelse(pgy %in% as.character(4:11), "Four or above", NA)))
-  nsqip$pgy01 <- as.numeric(nsqip$pgy_bin == "Four or above")
+  nsqip$pgy01 <- as.numeric(nsqip$pgy %in% as.character(0:3))
   # exclusions
   nsqip <- nsqip %>% 
-    filter(surgspec == "Plastics" & proper30 != "Yes" & admqtr %in% c(1, 4) & 
+    filter(surgspec == "Plastics" & proper30 != "Yes" &#admqtr %in% c(2, 3) & 
              age != "90+" & age > 17 & 
              asaclas != "5-Moribund" & asaclas != "4-Life Threat" & 
              attend != "Attending Not Present, but Available" & 
              attend != "Not entered" & 
              attend != "Attending Alone" & 
-             !is.na(sex) & 
-             !is.na(pgy_bin))
+             !is.na(pgy_bin)
+           )
   nsqip[["attend"]][nsqip[["attend"]] == "Attending in OR Suite"] <- 
     "Attending in OR"
   to_numeric <- c("tothlos", "age", "optime", "workrvu")
@@ -93,6 +106,12 @@ make_nsqip <- function(which_files = "default", study_pop = "everyone"){
     as.numeric(nsqip[["returnor"]] == "Yes" | 
                  nsqip[["supinfec"]] == "Superficial Incisional SSI" | 
                  nsqip[["wndinfd"]] == "Deep Incisional SSI")
+  nsqip[["admqtr23_01"]] <- ifelse(nsqip[["admqtr"]] == "2", 0, 
+                                   ifelse(nsqip[["admqtr"]] == "3", 1, 
+                                          NA))
+  nsqip[["admqtr"]] <- ifelse(nsqip[["admqtr"]] %in% c("1", "2", "4"), 0, 
+                                   ifelse(nsqip[["admqtr"]] == "3", 3, 
+                                          NA)) %>% as.character
   the_cache[["nsqip"]] <<- nsqip
   if(study_pop == "everyone") {
     return(nsqip)

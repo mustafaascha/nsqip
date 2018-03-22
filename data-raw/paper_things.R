@@ -1,4 +1,3 @@
-source("functions.R")
 
 mona_stuff <- list(ftr = list(to_exclude = 
                             "refs/CPT Codes TO EXCLUDE FROM ALL COHORTS.docx", 
@@ -59,6 +58,8 @@ paper_stuff <- list(mona = mona_stuff,
                     fischer = fischer_stuff, 
                     vti = vti)
 rm(mona_stuff, fischer_stuff, vars_to_investigate, vti)
+
+devtools::use_data(paper_stuff)
 
 #=====================================================
 

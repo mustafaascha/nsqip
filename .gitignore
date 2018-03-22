@@ -1,2 +1,12 @@
 data/**
+recycling/**
+old/**
+refs/**
+nsqipr.Rproj
 .RProj**
+.Rproj.user
+.Rhistory
+.RData
+inst/doc
+*.pdf
+*.png
