@@ -5,7 +5,8 @@
 #' Make a NSQIP data.frame
 #'
 #'
-#' @param which_files 
+#' @param which_files This is a numeric vector specifying which NSQIP data,
+#'                    in alphabetical order, is to be read
 #' @param study_pop Three cohorts were used for this work: everyone, people
 #'   having cosmetics procedures, and people having non-cosmetic procedures
 #'
@@ -33,14 +34,10 @@ make_nsqip <- function(which_files = "default", study_pop = "everyone"){
   #remove year 2015 because it looks like there's no pgy
   for_io[["to_read"]] <- list.files("data/txt", pattern = "txt.gz", full.names = TRUE)
   #this logic probably doesn't need to be so complicated
-  if(length(which_files) == 1) {
-    if(which_files == "default"){
-      for_io[["to_read"]] <- for_io[["to_read"]]#[-length(for_io[["to_read"]])]
-    } else {
-      for_io[["to_read"]] <- for_io[["to_read"]][which_files]#[-length(for_io[["to_read"]])]
-    }
-  } else {
+  if(which_files != "default"){
     for_io[["to_read"]] <- for_io[["to_read"]][which_files]#[-length(for_io[["to_read"]])]
+  } else {
+    for_io[["to_read"]] <- for_io[["to_read"]]#[-length(for_io[["to_read"]])]
   }
   grep_raw <- function(x, p, v = FALSE) regmatches(x, regexpr(p, x), invert = v)
   for_io[["yrs"]] <- grep_raw(for_io[["to_read"]], "[0-9]+")
@@ -51,10 +48,8 @@ make_nsqip <- function(which_files = "default", study_pop = "everyone"){
           read_tsv(file = filepath, 
                    col_types = cols(.default = "c"), guess_max = 0, 
                    na = c("9999", "999", "-99", "NULL"))
-        })
-  the_data <- 
-    map(the_data, 
-        function(df) {
+        }) %>%  
+    map(function(df) {
           names(df) <- tolower(names(df))
           df
         })
@@ -74,7 +69,6 @@ make_nsqip <- function(which_files = "default", study_pop = "everyone"){
   for_merge[["vars_in_all_dfs"]] <- with(for_merge, reduce(data_names, intersect))
   nsqip <- with(for_merge, map(the_data, ~ .x[,vars_in_all_dfs]))
   nsqip <- bind_rows(nsqip)
-  #rm(the_data)
   
   nsqip$bmi <- with(nsqip, 
     (as.numeric(weight) * 0.453592) / ((as.numeric(height) * 0.0254) ^ 2))
