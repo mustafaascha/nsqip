@@ -1,5 +1,7 @@
 # ACS-NSQIP analysis for a study of the "July Effect"
 
+[![DOI](https://zenodo.org/badge/117899615.svg)](https://zenodo.org/badge/latestdoi/117899615)
+
 # Purpose
 
 This package is meant to document and increase the reproducibility of a paper examining the "July Effect" among procedures recorded in the [American College of Surgeons National Surgical Quality Improvement Program (ACS-NSQIP).](https://www.facs.org/quality-programs/acs-nsqip)
