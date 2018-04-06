@@ -18,8 +18,7 @@ Assuming the years in the ACS-NSQIP "data/txt/" folder correspond to those repor
 Before adding the data to the correct folder, you should have the following directory structure: 
 
 nsqipr    
-├── data   
-│   └── txt   
+├── data/txt  
 │       └── PUT-DATA-HERE   
 ├── data-raw   
 │   └── paper_things.R   
@@ -38,8 +37,7 @@ nsqipr
 After adding the data, the project directory should have the following structure:
 
 nsqipr   
-├── data    
-│   └── txt    
+├── data/txt    
 │       ├── ACS_NSQIP_PUF_05_06_vr1.txt.gz    
 │       ├── ACS_NSQIP_PUF07_TXT.txt.gz    
 │       ├── ACS_NSQIP_PUF08_TXT.txt.gz    
