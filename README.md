@@ -15,26 +15,19 @@ Assuming the years in the ACS-NSQIP "data/txt/" folder correspond to those repor
 
 # Project structure
 
-Before adding the data to the correct folder, you should have the following directory structure: 
+Before adding the data to the correct folder, the project structure looks like this:
 
 nsqipr    
 ├── data/txt  
 │       └── PUT-DATA-HERE   
 ├── data-raw   
 │   └── paper_things.R   
-├── DESCRIPTION   
-├── LICENSE   
-├── NAMESPACE   
-├── nsqipr.Rproj   
-├── R   
-│   ├── analysis.R   
-│   ├── data.R   
-│   └── munge.R   
+...
 ├── README.md   
 └── report.Rmd   
 
 
-After adding the data, the project directory should have the following structure:
+After adding the data, the project directory should have (about) the following structure:
 
 nsqipr   
 ├── data/txt    
@@ -51,14 +44,7 @@ nsqipr
 │       └── PUT-DATA-HERE    
 ├── data-raw    
 │   └── paper_things.R    
-├── DESCRIPTION    
-├── LICENSE    
-├── NAMESPACE    
-├── nsqipr.Rproj    
-├── R    
-│   ├── analysis.R    
-│   ├── data.R    
-│   └── munge.R    
+...
 ├── README.md    
 └── report.Rmd    
 
