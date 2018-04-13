@@ -92,7 +92,7 @@ matched_data <-
 
 unmatched_data <- nsqip
 
-r_rules <- map2(unmatched_data, matched_data, rubin_rules)
+#r_rules <- map2(unmatched_data, matched_data, rubin_rules)
 
 #match_fn(nsqip[[1]])
 ```
