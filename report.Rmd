@@ -2,7 +2,7 @@
 title: "July Effect - Preliminary"
 author: "Mustafa Ascha"
 date: "January 29, 2018"
-output: pdf_document
+output: html_document
 ---
 
 ```{r setup, include=FALSE}

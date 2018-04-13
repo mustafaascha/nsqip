@@ -3,5 +3,6 @@
 export(binarize_outcomes)
 export(classification_metrics)
 export(do_glms)
+export(paper_stuff)
 import(purrr)
 import(tidyverse)

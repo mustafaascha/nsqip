@@ -1,4 +1,4 @@
-data/**
+data/txt/**
 recycling/**
 old/**
 refs/**
@@ -10,3 +10,4 @@ nsqipr.Rproj
 inst/doc
 *.pdf
 *.png
+packrat/lib*/
