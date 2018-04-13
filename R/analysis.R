@@ -74,3 +74,159 @@ classification_metrics <- function(dflist, dfnm) {
 }
 
 
+
+
+#' Calculate missingness
+#'
+#' @param df A data.frame whose missingness is to be calculated
+#'
+#' @return A named vector of double
+#' @export
+#'
+#' @examples
+get_missing_prop <- function(df) {
+  map_dbl(df, ~ length(which(is.na(.x))) / length(.x))
+}
+
+#' Bootstrapped stepwise regression
+#'
+#' @param mdl A fitted model
+#' @param df A data.frame used to produce a fitted model 
+#' @param n number of iterations
+#' @param n_fraction fraction of df to use per iteration
+#'
+#' @return
+#' @export
+#'
+#' @examples
+boot_step <- function(mdl, df, n, n_fraction = 0.8){
+  mdl_form <- mdl$formula
+  data_vars <- unlist(strsplit(as.character(mdl_form), "\\ \\+\\ "))[-1]
+  full_data <- df[,data_vars]
+  full_data <- full_data[complete.cases(full_data),]
+  size_to_sample <- n_fraction * nrow(full_data)
+  form_chr <- function(frm) unlist(strsplit(as.character(frm),"\\ \\+\\ "))[-1]
+  do_model <- function(df2) step(glm(mdl_form, "binomial", df2), trace = FALSE)
+  sample_model <- function(df1) do_model(sample_n(df1, size_to_sample))
+  mdl_forms <- 
+    lapply(seq_len(n), function(x) sample_model(full_data)[["formula"]])
+  chr_forms <- lapply(mdl_forms, form_chr)
+  table(unlist(chr_forms)) / n
+}
+
+
+#' Make a model pretty for show
+#'
+#' @param mdl 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+for_show <- function(mdl) {
+  to_return <- 
+    tbl_df(cbind(broom::tidy(mdl), confint(mdl))) %>% 
+    select(term, estimate, p.value, conf.low = `2.5 %`, conf.high = `97.5 %`) %>% 
+    mutate(odds_ratio = exp(estimate), 
+           conf.low = exp(conf.low),
+           conf.high = exp(conf.high)) %>% 
+    select(-estimate) %>% 
+    select(term, odds_ratio, conf.low, conf.high, p.value) %>% 
+    filter(term != "(Intercept)")
+  map_if(to_return, is_double, function(x) sprintf("%.3f", x)) %>% tbl_df
+}
+
+#' Put model results into a vector of chars
+#'
+#' @param mdf 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+paste_glm <- function(mdf) {
+  library(zeallot)
+  mdf[,c("open", "middle", "end")] %<-% list(" (", "-", ")")
+  vars_to_paste <- 
+    c("odds_ratio", "open", "conf.low", "middle", "conf.high", "end")
+  for_paste <- mdf[,vars_to_paste]
+  apply(for_paste, 1, paste, collapse = "")
+}
+
+#' Do the Epi::twoby2
+#'
+#' @param x 
+#' @param y 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+two_by_two <- function(x, y){
+  to_return <- Epi::twoby2(x, y, print = FALSE)
+  to_return[[2]] <- to_return[[2]][1:2,]
+  to_return[[3]] <- to_return[[3]][1]
+  to_return
+}
+
+#' Tidy a glm
+#'
+#' @param mdl 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+tidy_glm <- function(mdl){
+  bind_cols(broom::tidy(mdl), 
+            broom::confint_tidy(mdl)) %>% 
+    select(term, estimate, conf.low, conf.high, p.value) %>% 
+    modify_at(c("estimate", "conf.low", "conf.high"), exp) %>% 
+    filter(term != "(Intercept)")
+}
+
+
+
+#' Rubin rules
+#'
+#' @param ps_glm A model constructed using propensity-score matching/adjustment 
+#' @param u_df An unmatched data frame
+#' @param m_df A matched data frame
+#'
+#' @return
+#' @export
+#'
+#' @examples
+rubin_rules <- function(u_df, m_df) {
+  ps_glm <- 
+    glm(Insurance ~ Age___Delivery + Adequate_PNC + 
+          Parity + GestAge_Del + Race + Married + 
+          Education_Level, 
+        data = select(m_df, -distance, -weights), 
+        family = "binomial")
+  u_df$pscore <- predict(ps_glm, newdata = u_df)
+  m_df$pscore <- predict(ps_glm, newdata = m_df)
+  rule_1 <- function(df) {
+    with(df, 
+         abs(100 * (mean(pscore[Insurance == 0], na.rm=T) - 
+                      mean(pscore[Insurance == 1], na.rm=T)) /
+               sd(pscore, na.rm = T)))
+  }
+  rule_2 <- function(df) {
+    with(df, var(pscore[Insurance == 0], na.rm = T) / 
+           var(pscore[Insurance == 1], na.rm = T))
+  }
+  list(
+    rule_1 = list(
+      unmatched = rule_1(u_df),
+      matched = rule_1(m_df)
+      ),
+    rule_2 = list(
+      unmatched = rule_2(u_df),
+      matched = rule_2(m_df)
+    )
+  )
+}
+
+
+
