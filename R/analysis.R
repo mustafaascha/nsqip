@@ -189,7 +189,7 @@ tidy_glm <- function(mdl){
 
 #' Rubin rules
 #'
-#' @param ps_glm A model constructed using propensity-score matching/adjustment 
+#' @param frmla A formula used to construct a glm propensity-score model
 #' @param u_df An unmatched data frame
 #' @param m_df A matched data frame
 #'
@@ -197,36 +197,38 @@ tidy_glm <- function(mdl){
 #' @export
 #'
 #' @examples
-rubin_rules <- function(u_df, m_df) {
-  ps_glm <- 
-    glm(Insurance ~ Age___Delivery + Adequate_PNC + 
-          Parity + GestAge_Del + Race + Married + 
-          Education_Level, 
-        data = select(m_df, -distance, -weights), 
-        family = "binomial")
-  u_df$pscore <- predict(ps_glm, newdata = u_df)
-  m_df$pscore <- predict(ps_glm, newdata = m_df)
-  rule_1 <- function(df) {
-    with(df, 
-         abs(100 * (mean(pscore[Insurance == 0], na.rm=T) - 
-                      mean(pscore[Insurance == 1], na.rm=T)) /
-               sd(pscore, na.rm = T)))
-  }
-  rule_2 <- function(df) {
-    with(df, var(pscore[Insurance == 0], na.rm = T) / 
-           var(pscore[Insurance == 1], na.rm = T))
-  }
-  list(
-    rule_1 = list(
-      unmatched = rule_1(u_df),
-      matched = rule_1(m_df)
-      ),
-    rule_2 = list(
-      unmatched = rule_2(u_df),
-      matched = rule_2(m_df)
+#' @import zeallot
+rubin_rules <- function(frmla, u_df, m_df) {
+  library(zeallot)
+  
+  ps_mdl <- glm(frmla, data = m_df, family = "binomial")
+  
+  c(u_df, m_df) %<-% 
+    map(list(u_df, m_df), 
+        function(df) mutate(df, pscore = predict(ps_mdl, df))
     )
+  
+  matched_on <- formula_predictors(frmla)[1]
+  stopifnot(all(unique(u_df[[matched_on]]) %in% c(0, 1, NA)) & 
+              all(unique(u_df[[matched_on]]) %in% c(0, 1, NA))
+  )
+  
+  each_groups_pscore <- 
+    function(df) map(c(p_0 = 0, p_1 = 1), 
+                     ~ df[["pscore"]][df[[matched_on]] == .x]
+                     )
+  
+  map(list(unmatched = u_df, matched = m_df),
+      function(df) {
+        c(p_0, p_1) %<-% each_groups_pscore(df)
+        list(
+          rule_1 =
+            abs(
+              100 * (mean(p_0, na.rm = T) - mean(p_1, na.rm = T)) /
+                sd(c(p_0, p_1), na.rm = T)
+            ),
+          rule_2 = (var(p_0, na.rm = T) / var(p_1, na.rm = T))
+          )
+      }
   )
 }
-
-
-
