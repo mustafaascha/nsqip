@@ -8,11 +8,11 @@ This package is meant to document and increase the reproducibility of a paper ex
 
 # Instructions
 
-After extracting the ACS-NSQIP data, place the .txt data files into the project folder "data/txt". By default, the report will use the first six files in the "txt" data folder. This is because the "July Effect" analysis requires resident PGY data, which was available only for a select number of years.
+After extracting the ACS-NSQIP data, place the .txt data files into the project folder "data/txt". By default, the report will use the first six files in the "txt" data folder. This is because the "July Effect" analysis requires resident PGY data, which was available for only a select number of years.
 
 This work depends on R, pandoc, and several R packages: `tidyverse`, `pander`, `knitr`, `rmarkdown`, `mice`, `devtools`, `zeallot`, `Epi`, and `broom`. R users who are familiar with `packrat` may take advantage of the included dependency source code.   
 
-Assuming the years in the ACS-NSQIP "data/txt/" folder correspond to those reported in our manuscript, "report.Rmd" may be knit to reproduce that manuscript. Alternatively, Mac or Linux users may navigate to the working directory and reproduce these results using a single command: `make`. 
+Assuming the years in the ACS-NSQIP "data/txt/" folder correspond to those reported in our manuscript, "report.Rmd" may be knit to reproduce results from manuscript. Alternatively, Mac or Linux users may navigate to the working directory and reproduce these results using `make`. 
 
 
 # Project structure
