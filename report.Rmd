@@ -1,8 +1,10 @@
 ---
 title: "July Effect - Preliminary"
 author: "Mustafa Ascha"
-date: "January 29, 2018"
-output: pdf_document
+date: "October 30, 2018"
+output:
+  pdf_document: default
+  word_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -36,36 +38,43 @@ names(nsqip) <- c("everyone", "cosmetics", "no_cosmetic")
 nsqip <- map(nsqip, function(df) mutate(df, admqtr_t = ifelse(admqtr == "0", "Any Quarter", admqtr)))
 tbl_ones <- 
   map(nsqip, 
-      function(df, strat) {
+      function(df) {
         print(tableone::CreateTableOne(c("surgspec", "pgy_bin", 
-                                         paper_stuff$mona$predictors, 
-                                         paper_stuff$vti$outcomes), 
+                                         paper$mona$predictors, 
+                                         paper$vti$outcomes), 
                              strata = "admqtr_t", data = df), printToggle = FALSE)
-  })
+  }) %>% 
+  map(fix_to_names)
 
 ```
 
 ```{r setup propensity score dataframe, results = 'hide'}
 
 nsqip <- nsqip %>% map(function(df){
-  preds <- nsqipr::paper_stuff$mona$predictors
+  preds <- nsqipr::paper$mona$predictors
   the_form <- paste0("pgy01 ~ ", paste0(preds, collapse = " + "))
   df[["propensity_score"]] <-
     predict(glm(the_form, "binomial", df), df, type = "response")
   df
 })
 
-paper_stuff$mona[["predictors"]] <-
-   c(nsqipr::paper_stuff$mona[["predictors"]], "propensity_score")
+paper$mona[["predictors"]] <-
+   c(nsqipr::paper$mona[["predictors"]], "propensity_score")
 
-nsqip <- nsqip %>% map(binarize_outcomes)
+nsqip <- 
+  nsqip %>% 
+  map(binarize_outcomes) %>% 
+  map(~ filter(.x, 
+               attend != "Attending Not Present, but Available" & 
+               attend != "Not entered")
+      )
 #check which variables are cool
-#map(nsqip, function(x) map(x[paper_stuff$mona$outcomes], table))
+#map(nsqip, function(x) map(x[paper$mona$outcomes], table))
 
 nsqip <- 
   map(nsqip, function(df){
     list(select(df, "pgy01", "pgy_bin", "admqtr", "admqtr23_01",
-                one_of(nsqipr::paper_stuff$mona$predictors, 
+                one_of(nsqipr::paper$mona$predictors, 
                        unique(unlist(otl)))), 
          select(df,  "propensity_score"))
     })
@@ -105,8 +114,6 @@ proportion_missing <-
          Variable = names(not_imputed_nsqip[[1]]))
 pander(proportion_missing, caption = "Proportion of missing observations for each variable. These were imputed.")
 ```
-
-
 
 ```{r model and tidy models, results = 'hide'}
 
@@ -201,6 +208,8 @@ models_df <- models_df[,to_show]
 
 ```
 
+\pagebreak 
+
 # Table ones
 
 ## Whole Population
@@ -212,12 +221,16 @@ pander(tbl_ones[[1]][,1:3])
 
 ## Cosmetics procedures
 
+\pagebreak 
+
 ```{r}
 pander(tbl_ones[[2]][,1:3])
 ```
 
 
 ## Non-cosmetics procedures
+
+\pagebreak 
 
 ```{r}
 pander(tbl_ones[[3]][,1:3])
@@ -229,13 +242,18 @@ pander(tbl_ones[[3]][,1:3])
 
 Here, we are looking at an estimate of the odds ratio of an outcome for the third quarter compared to the second quarter, PGY3 and below versus PGY4 and above. Each estimate in the following two tables that corresponds to the same outcome, population, and "propensity" label is the result of a single logistic regression model, where these models are predicted by each of admission quarter (3 versus any other), resident involvement, and propensity score + matching for the "Matched" populations.  
 
-
 ```{r}
-pander(models_df %>% filter(term == "Q3") %>% arrange(desc(outcome, propensity)), split.table = Inf)
+models_df %>% 
+  filter(term == "Q3") %>% 
+  arrange(desc(outcome), propensity) %>% 
+  pander(split.table = Inf)
 ```
 
 ```{r}
-pander(models_df %>% filter(term != "Q3") %>% arrange(desc(outcome, propensity)), split.table = Inf)
+models_df %>% 
+  filter(term != "Q3") %>% 
+  arrange(desc(outcome), propensity) %>% 
+  pander(split.table = Inf)
 ```
 
 
@@ -244,24 +262,66 @@ pander(models_df %>% filter(term != "Q3") %>% arrange(desc(outcome, propensity))
 These visualizations are meant to ensure comparable propensity scores. If one of the populations has a visually different number of observations in a particular propensity score range, then we would be concerned that propensity scoring didn't work. 
 
 ```{r}
-
 propplot <- function(df) ggplot(df, aes(propensity_score, fill = admqtr)) + geom_histogram()
-
 map(nsqip, propplot)
-
 ```
 
-
+# Odds ratios visualization
 
 ```{r}
+pmodels_df <- 
+  models_df %>%
+    modify_at("population", stringr::str_to_title) %>%
+    modify_at("outcome",
+              ~ case_when(
+                .x == "returnor" ~ "Return to OR", 
+                .x == "supinfec" ~ "SSI"
+              )) %>% 
+    modify_at("population", 
+              ~ case_when(
+                .x == "Everyone" ~ "All",
+                .x == "No Cosmetic" ~ "Reconstructive",
+                .x == "Cosmetics" ~ "Cosmetic"
+              )) %>% 
+    modify_at("term", 
+              ~ case_when(
+                .x == "Q3" ~ "Quarter 3", 
+                .x == "PGY3-" ~ "Junior"
+              )) %>% 
+    modify_at(c("estimate", "conf.lower", "conf.upper"), as.numeric)
 
-devtools::session_info()
+p <- 
+  ggplot(pmodels_df, aes(x = population, 
+               y = estimate, 
+               color = propensity, 
+               shape = term)) + 
+      geom_hline(yintercept = 1, color = "grey70", linetype = 2) + 
+      geom_errorbar(aes(ymin = conf.lower, ymax = conf.upper), 
+                    position = position_dodge(width = 0.75), 
+                    width = 0.25) + 
+      geom_point(position = position_dodge(width = 0.75)) + 
+      facet_wrap(~ outcome + term, scales = "free") + 
+      scale_shape_manual(values = c(19, 1)) + 
+      scale_color_grey(start = 0, end = 0.5) + 
+      theme(legend.position = "bottom") + 
+      labs(color = "", shape = "", x = "", y = "Odds ratio")
+
+p
 
 ```
 
 
+The log scale makes more sense because logistic regression relies on a log transformation, so the following version uses a log scale on the y-axis: 
 
+```{r}
+p + scale_y_log10() 
+```
 
+\pagebreak
 
+# Session info
 
+```{r}
+devtools::session_info()
+```
 

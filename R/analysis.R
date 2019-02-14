@@ -27,7 +27,7 @@ do_glms <- function(m_dfs, dfs){
   do_prop_glm <- function(df, the_outcome){
     the_form <- 
       paste0(the_outcome, " ~ ", 
-             #paste0(c("pgy_bin", paper_stuff$mona$predictors, "propensity_score"), 
+             #paste0(c("pgy_bin", paper$mona$predictors, "propensity_score"), 
              paste0(c("admqtr + pgy_bin", "propensity_score"),
                     collapse = " + "))
     glm(the_form, "binomial", df)

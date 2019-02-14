@@ -4,4 +4,4 @@
 #'
 #'
 #'
-"paper_stuff"
+"paper"

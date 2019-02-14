@@ -1,24 +1,22 @@
 
-mona_stuff <- list(ftr = list(to_exclude = 
-                            "refs/CPT Codes TO EXCLUDE FROM ALL COHORTS.docx", 
-                       cosmetic = "refs/Cosmetic CPT Codes1.docx"))
-mona_stuff <- rlist::list.append(mona_stuff, 
+mona <- 
+  list(
+    ftr = list(to_exclude = "refs/CPT Codes TO EXCLUDE FROM ALL COHORTS.docx", 
+               cosmetic = "refs/Cosmetic CPT Codes1.docx")
+              )
+
+mona <- rlist::list.append(mona, 
   predictors = c("age", "sex",
     "bmi","race","smoke","diabetes","hypermed" ,"workrvu",
     "optime","inout","tothlos","wndclas","asaclas","attend"),
-  outcomes = c("returnor",#"readmission","unplanreadmission","reoperation",
-    #"cdarrest","cdmi","cnscoma","cnscva","neurodef",
-    #"othbleed",#"othdvt",
-    #"othsysep","urninfec", #"oprenafl", 
-    #"oupneumo",#"reintub",
-    #"pulembol",
-    "supinfec","wndinfd"#,"orgspcssi", "dehis"
+  outcomes = c("returnor",
+    "supinfec","wndinfd"
     ),
   exclusion = c("surgspec", "admqtr", "proper30"),
   cosmetics = gsub("\\ .*", "", 
-                   textreadr::read_docx(mona_stuff$ftr$cosmetic)),
+                   textreadr::read_docx(mona$ftr$cosmetic)),
   to_exclude = gsub("\\ .*", "",  
-                    textreadr::read_docx(mona_stuff$ftr$to_exclude))
+                    textreadr::read_docx(mona$ftr$to_exclude))
 )
 
 vti <- vars_to_investigate <- list(
@@ -32,7 +30,7 @@ vti <- vars_to_investigate <- list(
     c("prsodm", "prbun", "prcreat", "pralbum", "prbili", "prsgot", "pralph", 
       "prwbc", "prhct", "prplate", "prptt", "prinr", "prpt"),
   outcomes = 
-    c("returnor",  #"readmission", "unplanreadmission",  "reoperation", 
+    c("returnor",  
       "cdarrest",   "cdmi",        "cnscoma",            
       "cnscva",     "neurodef", "othbleed", 
       "othdvt",     "othsysep",    "urninfec",           
@@ -45,7 +43,7 @@ vti$tbl_one_vars <- with(vti, c(predictors, outcomes, labs))
 #Fischer, Wes, Kovach 2014 J Plast Surg Hand Surg "The impact of 
 # surgical resident participation in breast reduction surgery – 
 # Outcome analysis from the 2005–2011 ACS-NSQIP datasets"
-fischer_stuff <- list(
+fischer <- list(
   any_surgical_complication = c("supinfec", "wndinfd",
                              "orgspcssi",    "dehis", "reoperation",  
                              "reoperation1", "reoperation2", "reoperation3"),
@@ -54,12 +52,14 @@ fischer_stuff <- list(
   any_surgical_complication = c("supinfec",  "dehis"))
 
 
-paper_stuff <- list(mona = mona_stuff, 
-                    fischer = fischer_stuff, 
-                    vti = vti)
-rm(mona_stuff, fischer_stuff, vars_to_investigate, vti)
+paper <- 
+  list(
+    mona = mona, 
+    fischer = fischer, 
+    vti = vti)
+rm(mona, fischer, vars_to_investigate, vti)
 
-devtools::use_data(paper_stuff)
+devtools::use_data(paper)
 
 #=====================================================
 
@@ -74,7 +74,7 @@ devtools::use_data(paper_stuff)
 # Program Database. Sumanas W. Jordan, M.D., Lauren M. Mioton, B.S., 
 # John Smetona, B.A., B.S. Apas Aggarwal, Edward Wang, Ph.D., 
 # Gregory A. Dumanian, M.D., John Y. S. Kim, M.D. PRS Recon Outcomes 2014
-# jordan_stuff <- list()
+# jordan <- list()
 # jordan[["table_one_vars"]] <- 
 #   c("age", "bmi", "race_new", "admyr", "fnstatus2", "smoke", 
 #     "etoh", "asaclas", "inout", "optime", "wndclas")
