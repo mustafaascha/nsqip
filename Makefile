@@ -1,4 +1,3 @@
-
 all: data/paper.rda report.pdf
 
 VPATH = \

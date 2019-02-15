@@ -5,6 +5,7 @@ date: "October 30, 2018"
 output:
   pdf_document: default
   word_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -100,6 +101,8 @@ matched_data <-
   })
 
 unmatched_data <- nsqip
+
+#r_rules <- map2(unmatched_data, matched_data, rubin_rules)
 
 #match_fn(nsqip[[1]])
 ```

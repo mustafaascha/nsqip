@@ -6,3 +6,5 @@
 ^refs$
 ^vignettes$
 ^manuscript$
+^packrat/
+^\.Rprofile$
